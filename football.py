@@ -14,6 +14,8 @@ st.markdown("""
         th { background-color: #00d4aa; color: #0e1117; padding: 10px; text-align: left; }
         td { padding: 8px 10px; border-bottom: 1px solid #1e2530; color: #ffffff; }
         tr:hover { background-color: #1e2530; }
+        .stRadio label { color: #00d4aa; }
+        div[data-testid="stMarkdownContainer"] > div { overflow-x: auto; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -66,29 +68,29 @@ for team in standings:
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-            <div style="display: flex; gap: 15px; margin: 20px 0;">
-                <div style="background: #1e2530; border-radius: 10px; padding: 15px; flex: 1; text-align: center; border-top: 3px solid #00d4aa;">
-                    <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">POINTS</p>
-                    <h2 style="color: white; margin: 0;">{team["points"]}</h2>
-                </div>
-                <div style="background: #1e2530; border-radius: 10px; padding: 15px; flex: 1; text-align: center; border-top: 3px solid #00d4aa;">
-                    <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">WON</p>
-                    <h2 style="color: white; margin: 0;">{team["won"]}</h2>
-                </div>
-                <div style="background: #1e2530; border-radius: 10px; padding: 15px; flex: 1; text-align: center; border-top: 3px solid #00d4aa;">
-                    <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">DRAWN</p>
-                    <h2 style="color: white; margin: 0;">{team["draw"]}</h2>
-                </div>
-                <div style="background: #1e2530; border-radius: 10px; padding: 15px; flex: 1; text-align: center; border-top: 3px solid #00d4aa;">
-                    <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">LOST</p>
-                    <h2 style="color: white; margin: 0;">{team["lost"]}</h2>
-                </div>
-                <div style="background: #1e2530; border-radius: 10px; padding: 15px; flex: 1; text-align: center; border-top: 3px solid #00d4aa;">
-                    <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">GOAL DIFF</p>
-                    <h2 style="color: white; margin: 0;">{team["goalDifference"]}</h2>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin: 20px 0;">
+        <div style="background: #1e2530; border-radius: 10px; padding: 15px; text-align: center; border-top: 3px solid #00d4aa;">
+            <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">POINTS</p>
+            <h2 style="color: white; margin: 0;">{team["points"]}</h2>
+        </div>
+        <div style="background: #1e2530; border-radius: 10px; padding: 15px; text-align: center; border-top: 3px solid #00d4aa;">
+            <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">WON</p>
+            <h2 style="color: white; margin: 0;">{team["won"]}</h2>
+        </div>
+        <div style="background: #1e2530; border-radius: 10px; padding: 15px; text-align: center; border-top: 3px solid #00d4aa;">
+            <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">DRAWN</p>
+            <h2 style="color: white; margin: 0;">{team["draw"]}</h2>
+        </div>
+        <div style="background: #1e2530; border-radius: 10px; padding: 15px; text-align: center; border-top: 3px solid #00d4aa;">
+            <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">LOST</p>
+            <h2 style="color: white; margin: 0;">{team["lost"]}</h2>
+        </div>
+        <div style="background: #1e2530; border-radius: 10px; padding: 15px; text-align: center; border-top: 3px solid #00d4aa;">
+            <p style="color: #00d4aa; margin: 0; font-size: 0.8em;">GOAL DIFF</p>
+            <h2 style="color: white; margin: 0;">{team["goalDifference"]}</h2>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Top Scorers
 st.write("---")
@@ -115,3 +117,40 @@ for player in scorers:
 df_scorers = pd.DataFrame(scorers_data)
 df_scorers = df_scorers.sort_values(by=sort_by, ascending=False).reset_index(drop=True)
 st.write(df_scorers.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+# Squad View
+st.write("---")
+st.subheader(f"🏃 {selected_team} Squad")
+
+team_id = None
+for team in standings:
+    if team["team"]["name"] == selected_team:
+        team_id = team["team"]["id"]
+
+squad_response = requests.get(
+    f"https://api.football-data.org/v4/teams/{team_id}",
+    headers=headers
+)
+
+squad = squad_response.json().get("squad", [])
+
+squad_data = []
+for player in squad:
+    squad_data.append({
+        "Player": player["name"],
+        "Position": player["position"],
+        "Nationality": player["nationality"],
+        "Date of Birth": player["dateOfBirth"][:4] if player["dateOfBirth"] else "N/A",
+    })
+
+df_squad = pd.DataFrame(squad_data)
+
+search = st.text_input("Search player by name or position", key="squad_search")
+
+if search:
+    df_squad = df_squad[
+        df_squad["Player"].str.contains(search, case=False) |
+        df_squad["Position"].str.contains(search, case=False)
+    ]
+
+st.write(df_squad.to_html(escape=False, index=False), unsafe_allow_html=True)
