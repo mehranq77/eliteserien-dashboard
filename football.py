@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 import pandas as pd
 
-API_KEY = "22836bd163cf473c9dbff77b4aa668a0"
+API_KEY = st.secrets["API_FOOTBALL_KEY"]
 
 headers = {"X-Auth-Token": API_KEY}
 
