@@ -2,7 +2,7 @@ import requests
 import streamlit as st
 import pandas as pd
 
-API_KEY = st.secrets["API_FOOTBALL_KEY"]
+API_KEY = "22836bd163cf473c9dbff77b4aa668a0"
 
 headers = {"X-Auth-Token": API_KEY}
 
@@ -89,3 +89,29 @@ for team in standings:
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+# Top Scorers
+st.write("---")
+st.subheader("⚽ Top Scorers")
+sort_by = st.radio("Sort by", ["Goals", "Assists"], horizontal=True)
+
+scorers_response = requests.get(
+    "https://api.football-data.org/v4/competitions/PL/scorers",
+    headers=headers
+)
+
+scorers = scorers_response.json()["scorers"]
+
+scorers_data = []
+for player in scorers:
+    scorers_data.append({
+        "Player": f'<img src="{player["player"]["photo"] if "photo" in player["player"] else ""}" width="25"/> {player["player"]["name"]}',
+        "Club": player["team"]["name"],
+        "Goals": player["goals"],
+        "Assists": player["assists"] if player["assists"] else 0,
+        "Played": player["playedMatches"],
+    })
+
+df_scorers = pd.DataFrame(scorers_data)
+df_scorers = df_scorers.sort_values(by=sort_by, ascending=False).reset_index(drop=True)
+st.write(df_scorers.to_html(escape=False, index=False), unsafe_allow_html=True)
