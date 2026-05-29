@@ -28,12 +28,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Standings
-response = requests.get(
-    "https://api.football-data.org/v4/competitions/PL/standings",
-    headers=headers
-)
+@st.cache_data(ttl=1800)
+def get_standings():
+    r = requests.get(
+        "https://api.football-data.org/v4/competitions/PL/standings",
+        headers=headers
+    )
+    return r.json()
 
-standings = response.json()["standings"][0]["table"]
+data = get_standings()
+
+if "standings" not in data:
+    st.error("Couldn't load standings — the API may be rate-limited. Wait a minute and refresh.")
+    st.stop()
+
+standings = data["standings"][0]["table"]
 
 data = []
 for team in standings:
@@ -133,12 +142,21 @@ st.write("---")
 st.subheader("⚽ Top Scorers")
 sort_by = st.radio("Sort by", ["Goals", "Assists"], horizontal=True)
 
-scorers_response = requests.get(
-    "https://api.football-data.org/v4/competitions/PL/scorers",
-    headers=headers
-)
+@st.cache_data(ttl=1800)
+def get_scorers():
+    r = requests.get(
+        "https://api.football-data.org/v4/competitions/PL/scorers",
+        headers=headers
+    )
+    return r.json()
 
-scorers = scorers_response.json()["scorers"]
+scorers_data_raw = get_scorers()
+
+if "scorers" not in scorers_data_raw:
+    st.error("Couldn't load scorers — the API may be rate-limited. Wait a minute and refresh.")
+    st.stop()
+
+scorers = scorers_data_raw["scorers"]
 
 scorers_data = []
 for player in scorers:
@@ -163,12 +181,15 @@ for team in standings:
     if team["team"]["name"] == selected_team:
         team_id = team["team"]["id"]
 
-squad_response = requests.get(
-    f"https://api.football-data.org/v4/teams/{team_id}",
-    headers=headers
-)
+@st.cache_data(ttl=1800)
+def get_squad(tid):
+    r = requests.get(
+        f"https://api.football-data.org/v4/teams/{tid}",
+        headers=headers
+    )
+    return r.json()
 
-squad = squad_response.json().get("squad", [])
+squad = get_squad(team_id).get("squad", [])
 
 squad_data = []
 for player in squad:
@@ -194,13 +215,20 @@ st.write(df_squad.to_html(escape=False, index=False), unsafe_allow_html=True)
 st.write("---")
 st.subheader(f"📅 Last 5 Matches — {selected_team}")
 
-matches_response = requests.get(
-    f"https://api.football-data.org/v4/teams/{team_id}/matches",
-    headers=headers,
-    params={"status": "FINISHED", "limit": 5}
-)
+@st.cache_data(ttl=1800)
+def get_matches(tid):
+    r = requests.get(
+        f"https://api.football-data.org/v4/teams/{tid}/matches",
+        headers=headers,
+        params={"status": "FINISHED", "limit": 5}
+    )
+    return r.json()
 
-matches = matches_response.json().get("matches", [])
+matches_raw = get_matches(team_id)
+matches = matches_raw.get("matches", [])
+
+if not matches:
+    st.warning("No matches loaded — possibly rate-limited or no recent finished matches.")
 
 for match in matches:
     home = match["homeTeam"]["shortName"]
@@ -208,7 +236,7 @@ for match in matches:
     home_score = match["score"]["fullTime"]["home"]
     away_score = match["score"]["fullTime"]["away"]
     date = match["utcDate"][:10]
-    
+
     st.markdown(f"""
         <div style="background: #1e2530; border-radius: 8px; padding: 12px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #ffffff;">{home}</span>
