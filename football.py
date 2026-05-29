@@ -228,7 +228,7 @@ matches_raw = get_matches(team_id)
 matches = matches_raw.get("matches", [])
 
 if not matches:
-    st.warning("No matches loaded — possibly rate-limited or no recent finished matches.")
+    st.info("⏳ Match data is still loading. Give it a moment, then reselect this team.")
 
 for match in matches:
     home = match["homeTeam"]["shortName"]
